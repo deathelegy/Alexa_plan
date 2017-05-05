@@ -150,51 +150,54 @@ function sendMail(request, session, callback){
 
     console.log('session: '+JSON.stringify(session));
     var accessToken = session.user.accessToken;
-    if(accessToken){
-        // console.log('accessToken: ' + accessToken);
-        var client = MicrosoftGraph.Client.init({
-              authProvider: (done) => {
-                  done(null, accessToken);
-              }
-        });
-        //
-        var url = '/me/sendMail';
-        // var replyMessage = 'Send an email';
-        // templateContent = request.slot("CONTENT");
-        // templateSubject = request.slot("SUBJECT");
-        //
-        var mail = {
-            subject: title,
-            toRecipients: [{
-                emailAddress: {
-                    address: "Kai_Yang@wistron.com"
+    if(title && content){
+      if(accessToken){
+          // console.log('accessToken: ' + accessToken);
+          var client = MicrosoftGraph.Client.init({
+                authProvider: (done) => {
+                    done(null, accessToken);
                 }
-            }],
-            body: {
-                content: content,
-                contentType: "html"
-            }
-        }
-      return client
-          .api('/me/sendMail')
-          .post({message:mail})
-          .then((res) => {
-            // console.log('request content' + JSON.stringify(request) );
-            // console.log('res content' + JSON.stringify(res) );
-            // console.log('response content' + JSON.stringify(response) );
-            // response.say("send an mail title: "+ title +' now content: ' + content).reprompt("please say again").shouldEndSession(false);
-            // templateSubject = '';
-            // templateContent = ''
-            callback(sessionAttributes,
-                buildSpeechletResponse("mail status", speechOutput, "", true));
-;          }).catch((err) => {
-            console.log(err);
           });
+          //
+          var url = '/me/sendMail';
+          // var replyMessage = 'Send an email';
+          // templateContent = request.slot("CONTENT");
+          // templateSubject = request.slot("SUBJECT");
+          //
+          var mail = {
+              subject: title,
+              toRecipients: [{
+                  emailAddress: {
+                      address: "Kai_Yang@wistron.com"
+                  }
+              }],
+              body: {
+                  content: content,
+                  contentType: "html"
+              }
+          }
+        return client
+            .api('/me/sendMail')
+            .post({message:mail})
+            .then((res) => {
+              // console.log('request content' + JSON.stringify(request) );
+              // console.log('res content' + JSON.stringify(res) );
+              // console.log('response content' + JSON.stringify(response) );
+              // response.say("send an mail title: "+ title +' now content: ' + content).reprompt("please say again").shouldEndSession(false);
+              // templateSubject = '';
+              // templateContent = ''
+              callback(sessionAttributes,
+                  buildSpeechletResponse("mail status", speechOutput, "", true));
+            }).catch((err) => {
+              console.log(err);
+            });
 
+      }else{
+          console.log('no token');
+      }
     }else{
-        console.log('no token');
+      console.log("no title, no content");
     }
-
     //say the results
     // callback(sessionAttributes,
     //     buildSpeechletResponse("mail status", speechOutput, "", true));
