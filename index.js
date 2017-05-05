@@ -133,6 +133,7 @@ function getWelcomeResponse(callback) {
 //         buildSpeechletResponse("Travel booking", speechOutput, "", true));
 // }
 
+//send mail
 function sendMail(request, session, callback){
     console.log("in mail");
     console.log("request: "+JSON.stringify(request));
@@ -146,7 +147,7 @@ function sendMail(request, session, callback){
     var title=request.intent.slots.mailTitle.value;
     var content=request.intent.slots.mailContent.value;
 
-    speechOutput+= "mail title: "+ title + " content: "+ content;
+    speechOutput+= "send mail"  + " title: "+ title + " content: "+ content;
 
     console.log('session: '+JSON.stringify(session));
     var accessToken = session.user.accessToken;
@@ -158,17 +159,15 @@ function sendMail(request, session, callback){
                     done(null, accessToken);
                 }
           });
-          //
+
+          // send mail
           var url = '/me/sendMail';
-          // var replyMessage = 'Send an email';
-          // templateContent = request.slot("CONTENT");
-          // templateSubject = request.slot("SUBJECT");
-          //
+
           var mail = {
               subject: title,
               toRecipients: [{
                   emailAddress: {
-                      address: "Kai_Yang@wistron.com"
+                      address: 'Kai_Yang@wistron.com'
                   }
               }],
               body: {
@@ -203,6 +202,68 @@ function sendMail(request, session, callback){
     //     buildSpeechletResponse("mail status", speechOutput, "", true));
 }
 
+//get contacts
+function getContacts(request, session, callback){
+    console.log("in contacts");
+    console.log("request: "+JSON.stringify(request));
+    var sessionAttributes={};
+    var filledSlots = delegateSlotCollection(request, sessionAttributes, callback);
+
+    //compose speechOutput that simply reads all the collected slot values
+    var speechOutput = "list contacts";
+    // var mailName = request.intent.slots.mailName.value;
+
+    console.log('session: '+JSON.stringify(session));
+    var accessToken = session.user.accessToken;
+
+      if(accessToken){
+          // console.log('accessToken: ' + accessToken);
+          var client = MicrosoftGraph.Client.init({
+                authProvider: (done) => {
+                    done(null, accessToken);
+                }
+          });
+          //
+          //to who
+          var url = '/me/contacts';
+          var eventContacts ={
+            name: '',
+            email: ''
+          }
+
+          return client
+              .api('/me/contacts')
+              .get()
+              .then((res) => {
+                console.log('request content' + JSON.stringify(request) );
+                console.log('res content' + JSON.stringify(res) );
+                console.log('res name: ' + res.value[0].givenName);
+                console.log('res address: ' + res.value[0].emailAddresses[0].address);
+                console.log('res length: ' + res.value.length);
+
+                // for (var i = 0 ; i < res.value.length ; i++) {
+                //     if(res.value[i].givenName == mailName){
+                //       eventContacts.name = res.value[i].givenName;
+                //       eventContacts.email = res.value[i].emailAddresses[0].address;
+                //       console.log("compare: " + res.value[i].givenName);
+                //     }
+                //   }
+
+
+              }).catch((err) => {
+                console.log(err);
+              });
+
+      }else{
+          console.log('no token');
+      }
+
+    //say the results
+    // callback(sessionAttributes,
+    //     buildSpeechletResponse("mail status", speechOutput, "", true));
+}
+
+//check mail
 function checkMail(request, session, callback){
     console.log("in mail box");
     console.log("request: "+JSON.stringify(request));
@@ -375,6 +436,8 @@ function onIntent(request, session, callback) {
         sendMail(request, session, callback);
     }else if(intentName === 'checkMail'){
       checkMail(request, session, callback);
+    }else if(intentName === 'getContacts'){
+      getContacts(request, session, callback);
     }else if (intentName === 'AMAZON.HelpIntent') {
         getWelcomeResponse(callback);
     } else if (intentName === 'AMAZON.StopIntent' || intentName === 'AMAZON.CancelIntent') {
