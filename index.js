@@ -134,24 +134,25 @@ function getWelcomeResponse(callback) {
 // }
 
 //send mail
-function sendMail(request, session, callback){
+function SendEmailIntent(request, session, callback){
     console.log("in mail");
     console.log("request: "+JSON.stringify(request));
     var sessionAttributes={};
     var filledSlots = delegateSlotCollection(request, sessionAttributes, callback);
 
     //compose speechOutput that simply reads all the collected slot values
-    var speechOutput = "send an mail now";
+    var speechOutput = "Email is sent";
 
     //Now let's recap the trip
-    var title=request.intent.slots.mailTitle.value;
+    var subject=request.intent.slots.mailSubject.value;
     var content=request.intent.slots.mailContent.value;
+    var recipient = request.intent.slots.mailRecipient.value;
 
-    speechOutput+= "send mail"  + " title: "+ title + " content: "+ content;
+    speechOutput+= "send mail"  + " Recipient: " + recipient + " subject: " + subject + " content: "+ content;
 
     console.log('session: '+JSON.stringify(session));
     var accessToken = session.user.accessToken;
-    if(title && content){
+    if(subject && content && recipient){
       if(accessToken){
           // console.log('accessToken: ' + accessToken);
           var client = MicrosoftGraph.Client.init({
@@ -161,41 +162,93 @@ function sendMail(request, session, callback){
           });
 
           // send mail
-          var url = '/me/sendMail';
+          const getmyContacts = () => new Promise((rs, rj) => {
+              client.api('/me/contacts').get().then((contactsResult)=>{
+                // get email address
+                var eventContacts ={
+                  name: '',
+                  email: ''
+                }
 
-          var mail = {
-              subject: title,
-              toRecipients: [{
-                  emailAddress: {
-                      address: 'Kai_Yang@wistron.com'
-                  }
-              }],
-              body: {
-                  content: content,
-                  contentType: "html"
-              }
-          }
-        return client
-            .api('/me/sendMail')
-            .post({message:mail})
-            .then((res) => {
-              // console.log('request content' + JSON.stringify(request) );
-              // console.log('res content' + JSON.stringify(res) );
-              // console.log('response content' + JSON.stringify(response) );
-              // response.say("send an mail title: "+ title +' now content: ' + content).reprompt("please say again").shouldEndSession(false);
-              // templateSubject = '';
-              // templateContent = ''
+                  for (var i=0; i<contactsResult.value.length; i++) {
+                      if(contactsResult.value[i].givenName == recipient){
+                        eventContacts.name = contactsResult.value[i].givenName;
+                        eventContacts.email = contactsResult.value[i].emailAddresses[0].address;
+                        console.log("compare: " + contactsResult.value[i].givenName);
+                      }else{
+                        console.log("no pair");
+                        console.log('res name: ' + contactsResult.value[i].givenName);
+                        console.log('res address: ' + contactsResult.value[i].emailAddresses[0].address);
+                      }
+                    }
+
+                // if(eventContacts.name && eventContacts.email){
+                //   speechOutput = " mail name: " + eventContacts.name + " mail address: " + eventContacts.email;
+                // }else{
+                //   speechOutput = 'no user to check'
+                // }
+
+                rs(eventContacts);
+              }).catch((e) => {
+                rj(e);
+              })
+            });
+
+
+          const sendEmail = (eventContacts) => new Promise((rs, rj) => {
+            // handle contactsResult
+            var mailAddress = eventContacts.email;
+            var mail = {
+                subject: subject,
+                toRecipients: [{
+                    emailAddress: {
+                        address: mailAddress
+                    }
+                }],
+                body: {
+                    content: content,
+                    contentType: "html"
+                }
+            }
+            client.api('/me/sendMail').post({message:mail}).then((mailResult)=>{
+              console.log(mail);
+              rs(mailResult);
+            }).catch((e) => {
+              rj(e);
+            })
+          });
+
+          getmyContacts()
+            .then(sendEmail)
+            .then((mailResult)=>{
+              // do something
               callback(sessionAttributes,
                   buildSpeechletResponse("mail status", speechOutput, "", true));
-            }).catch((err) => {
-              console.log(err);
-            });
+            }).catch((e) => {
+              console.error('error happen', e);
+            })
+
+        // return client
+        //     .api('/me/sendMail')
+        //     .post({message:mail})
+        //     .then((res) => {
+        //       // console.log('request content' + JSON.stringify(request) );
+        //       // console.log('res content' + JSON.stringify(res) );
+        //       // console.log('response content' + JSON.stringify(response) );
+        //       // response.say("send an mail title: "+ title +' now content: ' + content).reprompt("please say again").shouldEndSession(false);
+        //       // templateSubject = '';
+        //       // templateContent = ''
+        //       callback(sessionAttributes,
+        //           buildSpeechletResponse("mail status", speechOutput, "", true));
+        //     }).catch((err) => {
+        //       console.log(err);
+        //     });
 
       }else{
           console.log('no token');
       }
     }else{
-      console.log("no title, no content");
+      console.log("no subject, no content");
     }
     //say the results
     // callback(sessionAttributes,
@@ -211,12 +264,12 @@ function getContacts(request, session, callback){
 
     //compose speechOutput that simply reads all the collected slot values
     var speechOutput = "list contacts";
-    // var mailName = request.intent.slots.mailName.value;
+    var mailName = request.intent.slots.mailName.value;
 
     console.log('session: '+JSON.stringify(session));
     var accessToken = session.user.accessToken;
 
-      if(accessToken){
+      if(accessToken && mailName){
           // console.log('accessToken: ' + accessToken);
           var client = MicrosoftGraph.Client.init({
                 authProvider: (done) => {
@@ -226,29 +279,46 @@ function getContacts(request, session, callback){
           //
           //to who
           var url = '/me/contacts';
-          var eventContacts ={
-            name: '',
-            email: ''
-          }
+
 
           return client
               .api('/me/contacts')
               .get()
               .then((res) => {
-                console.log('request content' + JSON.stringify(request) );
-                console.log('res content' + JSON.stringify(res) );
-                console.log('res name: ' + res.value[0].givenName);
-                console.log('res address: ' + res.value[0].emailAddresses[0].address);
-                console.log('res length: ' + res.value.length);
+                // console.log('request content' + JSON.stringify(request) );
+                // console.log('res content' + JSON.stringify(res) );
+                // console.log('res name: ' + res.value[0].givenName);
+                // console.log('res address: ' + res.value[0].emailAddresses[0].address);
+                // console.log('res length: ' + res.value.length);
+                // console.log('mailName:' + mailName);
+                // console.log('mailName type:' + typeof(mailName));
+                // console.log('res name type: ' + typeof(res.value[0].givenName));
 
-                // for (var i = 0 ; i < res.value.length ; i++) {
-                //     if(res.value[i].givenName == mailName){
-                //       eventContacts.name = res.value[i].givenName;
-                //       eventContacts.email = res.value[i].emailAddresses[0].address;
-                //       console.log("compare: " + res.value[i].givenName);
-                //     }
-                //   }
+                var eventContacts ={
+                  name: '',
+                  email: ''
+                }
 
+                  for (var i=0; i<res.value.length; i++) {
+                      if(res.value[i].givenName == mailName){
+                        eventContacts.name = res.value[i].givenName;
+                        eventContacts.email = res.value[i].emailAddresses[0].address;
+                        console.log("compare: " + res.value[i].givenName);
+                      }else{
+                        console.log("no pair");
+                        console.log('res name: ' + res.value[i].givenName);
+                        console.log('res address: ' + res.value[i].emailAddresses[0].address);
+                      }
+                    }
+
+                if(eventContacts.name && eventContacts.email){
+                  speechOutput = " mail name: " + eventContacts.name + " mail address: " + eventContacts.email;
+                }else{
+                  speechOutput = 'no user to check'
+                }
+
+                callback(sessionAttributes,
+                    buildSpeechletResponse("contacts status", speechOutput, "", true));
 
               }).catch((err) => {
                 console.log(err);
@@ -432,8 +502,8 @@ function onIntent(request, session, callback) {
     const intentName = request.intent.name;
 
     // Dispatch to your skill's intent handlers
-    if (intentName === 'sendMail') {
-        sendMail(request, session, callback);
+    if (intentName === 'SendEmailIntent') {
+        SendEmailIntent(request, session, callback);
     }else if(intentName === 'checkMail'){
       checkMail(request, session, callback);
     }else if(intentName === 'getContacts'){
