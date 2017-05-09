@@ -1,10 +1,13 @@
 var alexa = require("alexa-app");
-
 var app = new alexa.app("test");
 
 // Microsoft Graph JavaScript SDK
 // npm install msgraph-sdk-javascript
 var MicrosoftGraph = require("msgraph-sdk-javascript");
+
+var assignTask = require("./assignTask.js");
+var sendMail = require("./sendMail.js");
+var checkMail = require("./checkMail.js");
 
 'use strict';
 
@@ -133,128 +136,6 @@ function getWelcomeResponse(callback) {
 //         buildSpeechletResponse("Travel booking", speechOutput, "", true));
 // }
 
-//send mail
-function SendEmailIntent(request, session, callback){
-    console.log("in mail");
-    console.log("request: "+JSON.stringify(request));
-    var sessionAttributes={};
-    var filledSlots = delegateSlotCollection(request, sessionAttributes, callback);
-
-    //compose speechOutput that simply reads all the collected slot values
-    var speechOutput = "Email is sent";
-
-    //Now let's recap the trip
-    var subject=request.intent.slots.mailSubject.value;
-    var content=request.intent.slots.mailContent.value;
-    var recipient = request.intent.slots.mailRecipient.value;
-
-    speechOutput+= "send mail"  + " Recipient: " + recipient + " subject: " + subject + " content: "+ content;
-
-    console.log('session: '+JSON.stringify(session));
-    var accessToken = session.user.accessToken;
-    if(subject && content && recipient){
-      if(accessToken){
-          // console.log('accessToken: ' + accessToken);
-          var client = MicrosoftGraph.Client.init({
-                authProvider: (done) => {
-                    done(null, accessToken);
-                }
-          });
-
-          // send mail
-          const getmyContacts = () => new Promise((rs, rj) => {
-              client.api('/me/contacts').get().then((contactsResult)=>{
-                // get email address
-                var eventContacts ={
-                  name: '',
-                  email: ''
-                }
-
-                  for (var i=0; i<contactsResult.value.length; i++) {
-                      if(contactsResult.value[i].givenName == recipient){
-                        eventContacts.name = contactsResult.value[i].givenName;
-                        eventContacts.email = contactsResult.value[i].emailAddresses[0].address;
-                        console.log("compare: " + contactsResult.value[i].givenName);
-                      }else{
-                        console.log("no pair");
-                        console.log('res name: ' + contactsResult.value[i].givenName);
-                        console.log('res address: ' + contactsResult.value[i].emailAddresses[0].address);
-                      }
-                    }
-
-                // if(eventContacts.name && eventContacts.email){
-                //   speechOutput = " mail name: " + eventContacts.name + " mail address: " + eventContacts.email;
-                // }else{
-                //   speechOutput = 'no user to check'
-                // }
-
-                rs(eventContacts);
-              }).catch((e) => {
-                rj(e);
-              })
-            });
-
-
-          const sendEmail = (eventContacts) => new Promise((rs, rj) => {
-            // handle contactsResult
-            var mailAddress = eventContacts.email;
-            var mail = {
-                subject: subject,
-                toRecipients: [{
-                    emailAddress: {
-                        address: mailAddress
-                    }
-                }],
-                body: {
-                    content: content,
-                    contentType: "html"
-                }
-            }
-            client.api('/me/sendMail').post({message:mail}).then((mailResult)=>{
-              console.log(mail);
-              rs(mailResult);
-            }).catch((e) => {
-              rj(e);
-            })
-          });
-
-          getmyContacts()
-            .then(sendEmail)
-            .then((mailResult)=>{
-              // do something
-              callback(sessionAttributes,
-                  buildSpeechletResponse("mail status", speechOutput, "", true));
-            }).catch((e) => {
-              console.error('error happen', e);
-            })
-
-        // return client
-        //     .api('/me/sendMail')
-        //     .post({message:mail})
-        //     .then((res) => {
-        //       // console.log('request content' + JSON.stringify(request) );
-        //       // console.log('res content' + JSON.stringify(res) );
-        //       // console.log('response content' + JSON.stringify(response) );
-        //       // response.say("send an mail title: "+ title +' now content: ' + content).reprompt("please say again").shouldEndSession(false);
-        //       // templateSubject = '';
-        //       // templateContent = ''
-        //       callback(sessionAttributes,
-        //           buildSpeechletResponse("mail status", speechOutput, "", true));
-        //     }).catch((err) => {
-        //       console.log(err);
-        //     });
-
-      }else{
-          console.log('no token');
-      }
-    }else{
-      console.log("no subject, no content");
-    }
-    //say the results
-    // callback(sessionAttributes,
-    //     buildSpeechletResponse("mail status", speechOutput, "", true));
-}
-
 //get contacts
 function getContacts(request, session, callback){
     console.log("in contacts");
@@ -333,81 +214,6 @@ function getContacts(request, session, callback){
     //     buildSpeechletResponse("mail status", speechOutput, "", true));
 }
 
-//check mail
-function checkMail(request, session, callback){
-    console.log("in mail box");
-    console.log("request: "+JSON.stringify(request));
-    var sessionAttributes={};
-    // var filledSlots = delegateSlotCollection(request, sessionAttributes, callback);
-
-    //compose speechOutput that simply reads all the collected slot values
-    var speechOutput = "check mail now";
-
-    //Now let's recap the trip
-    // var title=request.intent.slots.mailTitle.value;
-    // var content=request.intent.slots.mailContent.value;
-
-    // speechOutput+= "mail title: "+ title + " content: "+ content;
-
-    console.log('session: '+JSON.stringify(session));
-    var accessToken = session.user.accessToken;
-    if(accessToken){
-        // console.log('accessToken: ' + accessToken);
-        var client = MicrosoftGraph.Client.init({
-              authProvider: (done) => {
-                  done(null, accessToken);
-              }
-        });
-        //
-        var url = '/me/mailFolders/';
-          //
-          return   client
-                  .api(url)
-                  .header("Prefer", 'outlook.timezone="Asia/Taipei"')
-                  .top(20)
-                  .get()
-                  .then((res) => {
-
-                    console.log(url);
-                    console.log("check mail" + JSON.stringify(res));
-
-                    var upcomingEventNames = {
-                      displayName:'',
-                      unreadItemCount:'',
-                      totalItemCount:''
-                    };
-                    var replyMessage = 'test';
-                    var str = "收件匣";
-                    for (var i=0; i<res.value.length; i++) {
-                        if(res.value[i].displayName == str){
-                          upcomingEventNames.displayName = res.value[i].displayName;
-                          upcomingEventNames.unreadItemCount = res.value[i].unreadItemCount;
-                          upcomingEventNames.totalItemCount = res.value[i].totalItemCount;
-                          console.log(res.value[i].displayName);
-                        }
-                      }
-
-                    console.log("mail box: " + JSON.stringify(upcomingEventNames));
-                    console.log("mail Name: " + upcomingEventNames.displayName);
-                    console.log("mail unread: " + upcomingEventNames.unreadItemCount);
-                    console.log("mail total: " + upcomingEventNames.totalItemCount);
-
-                    speechOutput = "Receiver folder have unread mail " + upcomingEventNames.unreadItemCount + " and total mail " + upcomingEventNames.totalItemCount;
-                    callback(sessionAttributes,
-                        buildSpeechletResponse("mail status", speechOutput, "", true));
-
-                  }).catch((err) =>{
-                    console.log(err);
-                  });
-
-    }else{
-        console.log('no token');
-    }
-
-    //say the results
-    // callback(sessionAttributes,
-    //     buildSpeechletResponse("mail status", speechOutput, "", true));
-}
 
 function handleSessionEndRequest(callback) {
     const cardTitle = 'Session Ended';
@@ -503,9 +309,11 @@ function onIntent(request, session, callback) {
 
     // Dispatch to your skill's intent handlers
     if (intentName === 'SendEmailIntent') {
-        SendEmailIntent(request, session, callback);
-    }else if(intentName === 'checkMail'){
-      checkMail(request, session, callback);
+        sendMail.SendEmailIntent(request, session, callback);
+    }else if(intentName === 'checkMailIntent'){
+      checkMail.checkMailIntent(request, session, callback);
+    }else if(intentName === 'AssignTaskIntent'){
+      assignTask.AssignTaskIntent(request, session, callback);
     }else if(intentName === 'getContacts'){
       getContacts(request, session, callback);
     }else if (intentName === 'AMAZON.HelpIntent') {
@@ -570,3 +378,6 @@ exports.handler = (event, context, callback) => {
         callback(err);
     }
 };
+
+exports.delegateSlotCollection = delegateSlotCollection;
+exports.buildSpeechletResponse = buildSpeechletResponse;
