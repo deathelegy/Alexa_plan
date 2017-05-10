@@ -10,6 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "alexa-app": "^4.0.0",
+    "moment": "^2.18.1",
+    "moment-timezone": "^0.5.13",
     "msgraph-sdk-javascript": "^0.3.1"
   }
 }

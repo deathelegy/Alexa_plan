@@ -1,5 +1,7 @@
 var alexa = require("alexa-app");
 var app = new alexa.app("test");
+var moment = require('moment');
+var Moment = require('moment-timezone');
 
 // Microsoft Graph JavaScript SDK
 // npm install msgraph-sdk-javascript
@@ -15,8 +17,11 @@ function checkMailIntent(request, session, callback){
     var sessionAttributes={};
     var filledSlots = delegateSlot.delegateSlotCollection(request, sessionAttributes, callback);
 
+    //get today
+    var today = moment().format();
+    console.log("today:  "+ today);
     //compose speechOutput that simply reads all the collected slot values
-    var speechOutput = "check mail now";
+    var speechOutput='';
 
     var mailSender = request.intent.slots.mailSender.value;
 
@@ -30,64 +35,97 @@ function checkMailIntent(request, session, callback){
               }
         });
 
-        // var url = '/me/mailFolders/';
-          var url = '/me/messages';
+        //get folderID
 
-          return   client
-                  .api(url)
-                  .header("Prefer", 'outlook.timezone="Asia/Taipei"')
-                  .select("receivedDateTime")
-                  .select("subject")
-                  .select("bodyPreview")
-                  .select("sender")
-                  .top(3)
-                  .get()
-                  .then((res) => {
+        const getfolderID = () => new Promise((rs, rj) => {
+            client.api('/me/mailFolders/').get().then((folderIDResult)=>{
+              var folderID = '';
 
-                    console.log(url);
-                    console.log("check mail" + JSON.stringify(res));
+              for (var i=0; i<folderIDResult.value.length; i++) {
+                  if(folderIDResult.value[i].displayName == '收件匣'){
+                    folderID = folderIDResult.value[i].id;
+                    console.log("compare: " + folderID);
+                  }else{
+                    console.log("no pair folderID");
+                  }
+                }
 
-                    var upcomingEvent = [];
-                        // upcomingEventBodyPreview = [],
-                        // upcomingEventReceivedDateTime =[];
+              rs(folderID);
+            }).catch((e) => {
+              rj(e);
+            })
+          });
 
+       // list folder messages
 
+       const listFolderMessage = (folderID) => new Promise((rs, rj) => {
+         // handle contactsResult
+         client
+                .api('/me/mailFolders/'+ folderID +'/messages/')
+                .select("receivedDateTime")
+                .select("subject")
+                .select("bodyPreview")
+                .select("sender")
+                .top(10)
+                .get().then((folderMessageResult)=>{
 
-                    // console.log('sender: ' + res.value[0].sender.emailAddress.name);
+                  console.log("check mail" + JSON.stringify(folderMessageResult));
 
-                    var temp = {};
-                    var regex = new RegExp( mailSender, 'g' );
-                    for(var i=0; i<res.value.length; i++) {
-                      temp = {
-                        subject: res.value[i].subject,
-                        bodyPreview: res.value[i].bodyPreview,
-                        receivedDateTime: res.value[i].receivedDateTime,
-                        sender: res.value[i].sender.emailAddress.name
-                      };
-                      var str = res.value[i].sender.emailAddress.name;
-                        if(str.match(regex)){
-                          upcomingEvent.push(temp);
-                          console.log("loop: " + res.value[i].sender.emailAddress.name);
-                        }else {
-                          console.log('err:' + res.value.length)
-                        }
+                  var upcomingEvent = [];
+
+                  // console.log('sender: ' + res.value[0].sender.emailAddress.name);
+                  mailSender = mailSender.toLowerCase()
+                  var temp = {};
+                  var regex = new RegExp( mailSender, 'g' );
+                  for(var i=0; i<folderMessageResult.value.length; i++) {
+                    var tempTaipeiTime = moment(folderMessageResult.value[i].receivedDateTime).add(8,"hours").format();
+                    temp = {
+                      subject: folderMessageResult.value[i].subject,
+                      bodyPreview: folderMessageResult.value[i].bodyPreview,
+                      receivedDateTime: tempTaipeiTime,
+                      sender: folderMessageResult.value[i].sender.emailAddress.name
+                    };
+
+                    console.log("time test: "+ temp.receivedDateTime);
+                    var str = folderMessageResult.value[i].sender.emailAddress.name.toLowerCase();
+                      if(str.match(regex) && moment(temp.receivedDateTime).isSame(today ,'day')){
+                        upcomingEvent.push(temp);
+                        console.log("loop: " + folderMessageResult.value[i].sender.emailAddress.name);
+                        console.log("loop: " +　JSON.stringify(upcomingEvent));
+                      }else {
+                        console.log('err:' + folderMessageResult.value.length)
                       }
-
-                      console.log("mail subject: " + upcomingEvent[0].subject);
-                      console.log("mail bodyPreview: " + upcomingEvent[0].bodyPreview);
-                      console.log("mail receivedDateTime: " + upcomingEvent[0].receivedDateTime);
-                    for(var i = 0 ; i < upcomingEvent.length ; i++){
-                      speechOutput += "mail: " + i + " subject " + upcomingEvent[i].subject + " content " + upcomingEvent[i].bodyPreview;
                     }
 
+                  if(upcomingEvent.length > 0){
+                    speechOutput += "You have " + upcomingEvent.length + " .. mail from " + mailSender ;
+                    for(var i = 0 ; i < upcomingEvent.length ; i++){
+                      speechOutput += ".. mail: " + i + " .. subject " + upcomingEvent[i].subject + " .. content " + upcomingEvent[i].bodyPreview;
+                    }
+                  }else{
+                    speechOutput += "sorry, you don't have any mail today from " + mailSender;
+                  }
 
-                    // speechOutput = "Receiver folder have unread mail " + upcomingEventNames.unreadItemCount + " and total mail " + upcomingEventNames.totalItemCount;
-                    callback(sessionAttributes,
-                        response.buildSpeechletResponse("mail status", speechOutput, "", true));
+           rs(folderMessageResult);
+         }).catch((e) => {
+           rj(e);
+         })
+       });
 
-                  }).catch((err) =>{
-                    console.log(err);
-                  });
+       // do
+
+       getfolderID()
+         .then(listFolderMessage)
+         .then((folderMessageResult)=>{
+
+           var replyMessage = '.. Is there anything else I can help you with?'
+           speechOutput += replyMessage;
+           // do something
+           callback(sessionAttributes,
+               response.buildSpeechletResponse("mail status", speechOutput, "", false));
+         }).catch((e) => {
+           console.error('error happen', e);
+         })
 
     }else{
         console.log('no token');

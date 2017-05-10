@@ -45,8 +45,12 @@ function SendEmailIntent(request, session, callback){
                   email: ''
                 }
 
+                recipient = recipient.toLowerCase()
+                var regex = new RegExp( recipient, 'g' );
+
                   for (var i=0; i<contactsResult.value.length; i++) {
-                      if(contactsResult.value[i].givenName == recipient){
+                    var str = contactsResult.value[i].givenName.toLowerCase();
+                      if(str.match(regex)){
                         eventContacts.name = contactsResult.value[i].givenName;
                         eventContacts.email = contactsResult.value[i].emailAddresses[0].address;
                         console.log("compare: " + contactsResult.value[i].givenName);
@@ -69,7 +73,7 @@ function SendEmailIntent(request, session, callback){
               })
             });
 
-
+          var count = 0;
           const sendEmail = (eventContacts) => new Promise((rs, rj) => {
             // handle contactsResult
             var mailAddress = eventContacts.email;
@@ -86,7 +90,9 @@ function SendEmailIntent(request, session, callback){
                 }
             }
             client.api('/me/sendMail').post({message:mail}).then((mailResult)=>{
+              count++;
               console.log(mail);
+              console.log('time: ' + count)
               rs(mailResult);
             }).catch((e) => {
               rj(e);
@@ -96,9 +102,12 @@ function SendEmailIntent(request, session, callback){
           getmyContacts()
             .then(sendEmail)
             .then((mailResult)=>{
+
+              var replyMessage = '.. Is there anything else I can help you with?'
+              speechOutput += replyMessage;
               // do something
               callback(sessionAttributes,
-                  response.buildSpeechletResponse("mail status", speechOutput, "", true));
+                  response.buildSpeechletResponse("mail status", speechOutput, "", false));
             }).catch((e) => {
               console.error('error happen', e);
             })

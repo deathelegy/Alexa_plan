@@ -8,6 +8,7 @@ var MicrosoftGraph = require("msgraph-sdk-javascript");
 var assignTask = require("./assignTask.js");
 var sendMail = require("./sendMail.js");
 var checkMail = require("./checkMail.js");
+var checkCalendar = require("./checkCalendar.js");
 
 'use strict';
 
@@ -107,117 +108,88 @@ function getWelcomeResponse(callback) {
 
 }
 
-// function planMyTrip(request, session, callback){
-//     console.log("in plan my trip");
+//get contacts
+// function getContacts(request, session, callback){
+//     console.log("in contacts");
 //     console.log("request: "+JSON.stringify(request));
 //     var sessionAttributes={};
 //     var filledSlots = delegateSlotCollection(request, sessionAttributes, callback);
 //
 //     //compose speechOutput that simply reads all the collected slot values
-//     var speechOutput = randomPhrase(tripIntro);
+//     var speechOutput = "list contacts";
+//     var mailName = request.intent.slots.mailName.value;
 //
-//     //activity is optional so we'll add it to the output
-//     //only when we have a valid activity
-//     var activity = isSlotValid(request, "activity");
-//     if (activity) {
-//       speechOutput += activity;
-//     } else {
-//       speechOutput += "You'll go ";
-//     }
+//     console.log('session: '+JSON.stringify(session));
+//     var accessToken = session.user.accessToken;
 //
-//     //Now let's recap the trip
-//     var fromCity=request.intent.slots.fromCity.value;
-//     var toCity=request.intent.slots.toCity.value;
-//     var travelDate=request.intent.slots.travelDate.value;
-//     speechOutput+= " from "+ fromCity + " to "+ toCity+" on "+travelDate;
+//       if(accessToken && mailName){
+//           // console.log('accessToken: ' + accessToken);
+//           var client = MicrosoftGraph.Client.init({
+//                 authProvider: (done) => {
+//                     done(null, accessToken);
+//                 }
+//           });
+//           //
+//           //to who
+//           var url = '/me/contacts';
+//
+//
+//           return client
+//               .api('/me/contacts')
+//               .get()
+//               .then((res) => {
+//                 // console.log('request content' + JSON.stringify(request) );
+//                 // console.log('res content' + JSON.stringify(res) );
+//                 // console.log('res name: ' + res.value[0].givenName);
+//                 // console.log('res address: ' + res.value[0].emailAddresses[0].address);
+//                 // console.log('res length: ' + res.value.length);
+//                 // console.log('mailName:' + mailName);
+//                 // console.log('mailName type:' + typeof(mailName));
+//                 // console.log('res name type: ' + typeof(res.value[0].givenName));
+//
+//                 var eventContacts ={
+//                   name: '',
+//                   email: ''
+//                 }
+//
+//                   for (var i=0; i<res.value.length; i++) {
+//                       if(res.value[i].givenName == mailName){
+//                         eventContacts.name = res.value[i].givenName;
+//                         eventContacts.email = res.value[i].emailAddresses[0].address;
+//                         console.log("compare: " + res.value[i].givenName);
+//                       }else{
+//                         console.log("no pair");
+//                         console.log('res name: ' + res.value[i].givenName);
+//                         console.log('res address: ' + res.value[i].emailAddresses[0].address);
+//                       }
+//                     }
+//
+//                 if(eventContacts.name && eventContacts.email){
+//                   speechOutput = " mail name: " + eventContacts.name + " mail address: " + eventContacts.email;
+//                 }else{
+//                   speechOutput = 'no user to check'
+//                 }
+//
+//                 callback(sessionAttributes,
+//                     buildSpeechletResponse("contacts status", speechOutput, "", true));
+//
+//               }).catch((err) => {
+//                 console.log(err);
+//               });
+//
+//       }else{
+//           console.log('no token');
+//       }
 //
 //     //say the results
-//     callback(sessionAttributes,
-//         buildSpeechletResponse("Travel booking", speechOutput, "", true));
+//     // callback(sessionAttributes,
+//     //     buildSpeechletResponse("mail status", speechOutput, "", true));
 // }
-
-//get contacts
-function getContacts(request, session, callback){
-    console.log("in contacts");
-    console.log("request: "+JSON.stringify(request));
-    var sessionAttributes={};
-    var filledSlots = delegateSlotCollection(request, sessionAttributes, callback);
-
-    //compose speechOutput that simply reads all the collected slot values
-    var speechOutput = "list contacts";
-    var mailName = request.intent.slots.mailName.value;
-
-    console.log('session: '+JSON.stringify(session));
-    var accessToken = session.user.accessToken;
-
-      if(accessToken && mailName){
-          // console.log('accessToken: ' + accessToken);
-          var client = MicrosoftGraph.Client.init({
-                authProvider: (done) => {
-                    done(null, accessToken);
-                }
-          });
-          //
-          //to who
-          var url = '/me/contacts';
-
-
-          return client
-              .api('/me/contacts')
-              .get()
-              .then((res) => {
-                // console.log('request content' + JSON.stringify(request) );
-                // console.log('res content' + JSON.stringify(res) );
-                // console.log('res name: ' + res.value[0].givenName);
-                // console.log('res address: ' + res.value[0].emailAddresses[0].address);
-                // console.log('res length: ' + res.value.length);
-                // console.log('mailName:' + mailName);
-                // console.log('mailName type:' + typeof(mailName));
-                // console.log('res name type: ' + typeof(res.value[0].givenName));
-
-                var eventContacts ={
-                  name: '',
-                  email: ''
-                }
-
-                  for (var i=0; i<res.value.length; i++) {
-                      if(res.value[i].givenName == mailName){
-                        eventContacts.name = res.value[i].givenName;
-                        eventContacts.email = res.value[i].emailAddresses[0].address;
-                        console.log("compare: " + res.value[i].givenName);
-                      }else{
-                        console.log("no pair");
-                        console.log('res name: ' + res.value[i].givenName);
-                        console.log('res address: ' + res.value[i].emailAddresses[0].address);
-                      }
-                    }
-
-                if(eventContacts.name && eventContacts.email){
-                  speechOutput = " mail name: " + eventContacts.name + " mail address: " + eventContacts.email;
-                }else{
-                  speechOutput = 'no user to check'
-                }
-
-                callback(sessionAttributes,
-                    buildSpeechletResponse("contacts status", speechOutput, "", true));
-
-              }).catch((err) => {
-                console.log(err);
-              });
-
-      }else{
-          console.log('no token');
-      }
-
-    //say the results
-    // callback(sessionAttributes,
-    //     buildSpeechletResponse("mail status", speechOutput, "", true));
-}
 
 
 function handleSessionEndRequest(callback) {
     const cardTitle = 'Session Ended';
-    const speechOutput = 'Thank you for trying the Alexa Skills Kit sample. Have a nice day!';
+    const speechOutput = 'Thank you for using this mail service. Have a nice day!';
     // Setting this to true ends the session and exits the skill.
     const shouldEndSession = true;
 
@@ -314,6 +286,8 @@ function onIntent(request, session, callback) {
       checkMail.checkMailIntent(request, session, callback);
     }else if(intentName === 'AssignTaskIntent'){
       assignTask.AssignTaskIntent(request, session, callback);
+    }else if(intentName === 'checkCalendarIntent'){
+      checkCalendar.checkCalendarIntent(request, session, callback);
     }else if(intentName === 'getContacts'){
       getContacts(request, session, callback);
     }else if (intentName === 'AMAZON.HelpIntent') {

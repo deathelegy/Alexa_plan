@@ -17,11 +17,12 @@ function AssignTaskIntent(request, session, callback){
     var duedate=request.intent.slots.duedate.value;
 
       speechOutput+= " information:"  + " recipient: "+ recipient + " thing: "+ thing + " duedate: " + duedate;
-
+      var replyMessage = '.. Is there anything else I can help you with?'
+      speechOutput += replyMessage;
       console.log('session: '+JSON.stringify(session));
 
       //say the results
-      callback(sessionAttributes, response.buildSpeechletResponse("AssignTask status", speechOutput, "", true));
+      callback(sessionAttributes, response.buildSpeechletResponse("AssignTask status", speechOutput, "", false));
 }
 
 exports.AssignTaskIntent = AssignTaskIntent;
