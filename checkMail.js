@@ -99,8 +99,8 @@ function checkMailIntent(request, session, callback){
 
                   if(upcomingEvent.length > 0){
                     speechOutput += "You have " + upcomingEvent.length + " .. mail from " + mailSender ;
-                    for(var i = 0 ; i < upcomingEvent.length ; i++){
-                      speechOutput += ".. mail: " + i + " .. subject " + upcomingEvent[i].subject + " .. content " + upcomingEvent[i].bodyPreview;
+                    for(var i = 1 ; i <= upcomingEvent.length ; i++){
+                      speechOutput += ".. mail: " + i + " .. subject " + upcomingEvent[i-1].subject + " .. content " + upcomingEvent[i-1].bodyPreview;
                     }
                   }else{
                     speechOutput += "sorry, you don't have any mail today from " + mailSender;

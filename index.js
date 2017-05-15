@@ -353,5 +353,6 @@ exports.handler = (event, context, callback) => {
     }
 };
 
+exports.isSlotValid = isSlotValid;
 exports.delegateSlotCollection = delegateSlotCollection;
 exports.buildSpeechletResponse = buildSpeechletResponse;
