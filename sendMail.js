@@ -7,7 +7,63 @@ var MicrosoftGraph = require("msgraph-sdk-javascript");
 
 var delegateSlot = require("./index.js");
 var response = require("./index.js");
+var isSlot = require("./index.js");
+
 var count = 0;
+var eventContacts = [];
+
+function compare(recipient, lastName, contactsResult){
+  eventContacts = [];
+  var temp={};
+  recipient = recipient.toLowerCase()
+  var regexFirst = new RegExp( recipient, 'g' );
+  var regexLast = new RegExp( lastName, 'g' );
+
+  if(lastName){
+    console.log('in lastName status:')
+    for (var i=0; i<contactsResult.value.length; i++) {
+      var str_first = contactsResult.value[i].givenName.toLowerCase();
+      var str_last = contactsResult.value[i].surname.toLowerCase();
+        if(str_first.match(regexFirst) && str_last.match(regexLast)){
+          temp = {
+              name: contactsResult.value[i].givenName,
+              email: contactsResult.value[i].emailAddresses[0].address,
+              last_name: contactsResult.value[i].surname
+            };
+          eventContacts.push(temp);
+          console.log("compare first: " + contactsResult.value[i].givenName);
+          console.log("compare last: " + contactsResult.value[i].surname);
+          console.log("compare mail : " + contactsResult.value[i].emailAddresses[0].address);
+        }else{
+          console.log("no pair");
+          console.log('res name: ' + contactsResult.value[i].givenName);
+          console.log('res last name: ' + contactsResult.value[i].surname);
+          console.log('res address: ' + contactsResult.value[i].emailAddresses[0].address);
+        }
+      }
+      return eventContacts;
+  }else{
+    console.log('in firstName status:')
+    for (var i=0; i<contactsResult.value.length; i++) {
+      var str = contactsResult.value[i].givenName.toLowerCase();
+        if(str.match(regexFirst)){
+          temp = {
+              name: contactsResult.value[i].givenName,
+              email: contactsResult.value[i].emailAddresses[0].address,
+              last_name: contactsResult.value[i].surname
+            };
+          eventContacts.push(temp);
+          console.log("compare: " + contactsResult.value[i].givenName);
+          console.log("compare mail : " + contactsResult.value[i].emailAddresses[0].address);
+        }else{
+          console.log("no pair");
+          console.log('res name: ' + contactsResult.value[i].givenName);
+          console.log('res address: ' + contactsResult.value[i].emailAddresses[0].address);
+        }
+      }
+    return eventContacts;
+  }
+}
 //send mail
 function SendEmailIntent(request, session, callback){
     console.log("in mail");
@@ -23,6 +79,10 @@ function SendEmailIntent(request, session, callback){
     var content=request.intent.slots.mailContent.value;
     var recipient = request.intent.slots.mailRecipient.value;
 
+    var lastName = isSlot.isSlotValid(request, "mailRecipientLastName");
+
+    console.log("LastName: " + lastName);
+
     console.log('session: '+JSON.stringify(session));
     var accessToken = session.user.accessToken;
     if(subject && content && recipient){
@@ -33,7 +93,6 @@ function SendEmailIntent(request, session, callback){
                     done(null, accessToken);
                 }
           });
-
           // send mail
           const getmyContacts = () => new Promise((rs, rj) => {
               client.api('/me/contacts').get().then((contactsResult)=>{
@@ -41,33 +100,10 @@ function SendEmailIntent(request, session, callback){
                 console.log(JSON.stringify(contactsResult));
                 // get email address
 
-                var eventContacts = [];
-
-                var temp={};
-                recipient = recipient.toLowerCase()
-                var regex = new RegExp( recipient, 'g' );
-
-                  for (var i=0; i<contactsResult.value.length; i++) {
-                    var str = contactsResult.value[i].givenName.toLowerCase();
-                      if(str.match(regex)){
-                        temp = {
-                            name: contactsResult.value[i].givenName,
-                            email: contactsResult.value[i].emailAddresses[0].address,
-                            last_name: contactsResult.value[i].surname
-                          };
-                        eventContacts.push(temp);
-                        console.log("compare: " + contactsResult.value[i].givenName);
-                        console.log("compare mail : " + contactsResult.value[i].emailAddresses[0].address);
-                      }else{
-                        console.log("no pair");
-                        console.log('res name: ' + contactsResult.value[i].givenName);
-                        console.log('res address: ' + contactsResult.value[i].emailAddresses[0].address);
-
-                      }
-                    }
+                compare(recipient, lastName, contactsResult);
 
                     if(eventContacts.length < 1){
-                      speechOutput +='sorry can not find '+ recipient + 'in your contacts ..please try anoter name';
+                      speechOutput +='sorry can not find '+ recipient + ' in your contacts ..please try anoter name';
 
                       callback(sessionAttributes,
                           response.buildSpeechletResponse("mail status", speechOutput, "", false));
@@ -80,13 +116,23 @@ function SendEmailIntent(request, session, callback){
 
                       callback(sessionAttributes,
                           response.buildSpeechletResponse("mail status", speechOutput, "", false));
-                      // request.intent.slots.mailRecipient.value = '';
-                      // filledSlots = delegateSlot.delegateSlotCollection(request, sessionAttributes, callback);
-                      // recipient = request.intent.slots.mailRecipient.value;
-                      // rj(e);
+
+                      // console.log("1 recipient :" + request.intent.slots.mailRecipient.value);
+                      // // request.intent.slots.mailRecipient.value = '';
+                      // // request.intent.slots.mailRecipientLastName.value = '';
+                      // delete request.intent.slots.mailRecipient.value;
+                      // delete request.intent.slots.mailRecipientLastName.value;
+                      // request.dialogState = 'IN_PROGRESS';
+                      // FilledSlots = delegateSlot.delegateSlotCollection(request, sessionAttributes, callback);
+                      //
+                      //
+                      // recipient  = request.intent.slots.mailRecipient.value;
+                      // lastName = request.intent.slots.mailRecipientLastName.value;
+                      // console.log("2 recipient :" + recipient);
+                      // console.log(" request: "+JSON.stringify(request));
                     }else {
                       rs(eventContacts);
-                    }                
+                    }
               }).catch((e) => {
                 rj(e);
               })

@@ -108,85 +108,6 @@ function getWelcomeResponse(callback) {
 
 }
 
-//get contacts
-// function getContacts(request, session, callback){
-//     console.log("in contacts");
-//     console.log("request: "+JSON.stringify(request));
-//     var sessionAttributes={};
-//     var filledSlots = delegateSlotCollection(request, sessionAttributes, callback);
-//
-//     //compose speechOutput that simply reads all the collected slot values
-//     var speechOutput = "list contacts";
-//     var mailName = request.intent.slots.mailName.value;
-//
-//     console.log('session: '+JSON.stringify(session));
-//     var accessToken = session.user.accessToken;
-//
-//       if(accessToken && mailName){
-//           // console.log('accessToken: ' + accessToken);
-//           var client = MicrosoftGraph.Client.init({
-//                 authProvider: (done) => {
-//                     done(null, accessToken);
-//                 }
-//           });
-//           //
-//           //to who
-//           var url = '/me/contacts';
-//
-//
-//           return client
-//               .api('/me/contacts')
-//               .get()
-//               .then((res) => {
-//                 // console.log('request content' + JSON.stringify(request) );
-//                 // console.log('res content' + JSON.stringify(res) );
-//                 // console.log('res name: ' + res.value[0].givenName);
-//                 // console.log('res address: ' + res.value[0].emailAddresses[0].address);
-//                 // console.log('res length: ' + res.value.length);
-//                 // console.log('mailName:' + mailName);
-//                 // console.log('mailName type:' + typeof(mailName));
-//                 // console.log('res name type: ' + typeof(res.value[0].givenName));
-//
-//                 var eventContacts ={
-//                   name: '',
-//                   email: ''
-//                 }
-//
-//                   for (var i=0; i<res.value.length; i++) {
-//                       if(res.value[i].givenName == mailName){
-//                         eventContacts.name = res.value[i].givenName;
-//                         eventContacts.email = res.value[i].emailAddresses[0].address;
-//                         console.log("compare: " + res.value[i].givenName);
-//                       }else{
-//                         console.log("no pair");
-//                         console.log('res name: ' + res.value[i].givenName);
-//                         console.log('res address: ' + res.value[i].emailAddresses[0].address);
-//                       }
-//                     }
-//
-//                 if(eventContacts.name && eventContacts.email){
-//                   speechOutput = " mail name: " + eventContacts.name + " mail address: " + eventContacts.email;
-//                 }else{
-//                   speechOutput = 'no user to check'
-//                 }
-//
-//                 callback(sessionAttributes,
-//                     buildSpeechletResponse("contacts status", speechOutput, "", true));
-//
-//               }).catch((err) => {
-//                 console.log(err);
-//               });
-//
-//       }else{
-//           console.log('no token');
-//       }
-//
-//     //say the results
-//     // callback(sessionAttributes,
-//     //     buildSpeechletResponse("mail status", speechOutput, "", true));
-// }
-
-
 function handleSessionEndRequest(callback) {
     const cardTitle = 'Session Ended';
     const speechOutput = 'Thank you for using this mail service. Have a nice day!';
@@ -203,6 +124,7 @@ function delegateSlotCollection(request, sessionAttributes, callback){
     if (request.dialogState === "STARTED") {
       console.log("in started");
       console.log("  current request: "+JSON.stringify(request));
+      console.log("  in started dialogState: "+JSON.stringify(request.dialogState));
       var updatedIntent=request.intent;
       //optionally pre-fill slots: update the intent object with slot values for which
       //you have defaults, then return Dialog.Delegate with this updated intent
@@ -212,6 +134,7 @@ function delegateSlotCollection(request, sessionAttributes, callback){
     } else if (request.dialogState !== "COMPLETED") {
       console.log("in not completed");
       console.log("  current request: "+JSON.stringify(request));
+      console.log("in not completed dialogState: "+JSON.stringify(request.dialogState));
       // return a Dialog.Delegate directive with no updatedIntent property.
       callback(sessionAttributes,
           buildSpeechletResponseWithDirectiveNoIntent());
@@ -219,6 +142,7 @@ function delegateSlotCollection(request, sessionAttributes, callback){
       console.log("in completed");
       console.log("  current request: "+JSON.stringify(request));
       console.log("  returning: "+ JSON.stringify(request.intent));
+      console.log("in completed dialogState: "+ JSON.stringify(request.dialogState));
       // Dialog is now complete and all required slots should be filled,
       // so call your normal intent handler.
       return request.intent;
