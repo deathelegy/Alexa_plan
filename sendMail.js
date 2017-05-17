@@ -8,6 +8,7 @@ var MicrosoftGraph = require("msgraph-sdk-javascript");
 var delegateSlot = require("./index.js");
 var response = require("./index.js");
 var isSlot = require("./index.js");
+var buildSpeechletResponseWithDirectiveNoIntent = require("./index.js");
 
 var count = 0;
 var eventContacts = [];
@@ -64,12 +65,51 @@ function compare(recipient, lastName, contactsResult){
     return eventContacts;
   }
 }
-//send mail
+
+//delegateSlot
+
+function slotCollection(request, sessionAttributes, callback){
+  console.log("in delegateSlotCollection");
+  console.log("  current dialogState: "+JSON.stringify(request.dialogState));
+
+    if (request.dialogState === "STARTED") {
+      console.log("mail in started");
+      console.log("  current request: "+JSON.stringify(request));
+      console.log("  in started dialogState: "+JSON.stringify(request.dialogState));
+      var updatedIntent=request.intent;
+      //optionally pre-fill slots: update the intent object with slot values for which
+      //you have defaults, then return Dialog.Delegate with this updated intent
+      // in the updatedIntent property
+      callback(sessionAttributes,
+          buildSpeechletResponseWithDirectiveNoIntent.buildSpeechletResponseWithDirectiveNoIntent());
+    } else if (request.dialogState !== "COMPLETED") {
+      console.log("mail in not completed");
+      console.log("  current request: "+JSON.stringify(request));
+      console.log("in not completed dialogState: "+JSON.stringify(request.dialogState));
+      // return a Dialog.Delegate directive with no updatedIntent property.
+      callback(sessionAttributes,
+          buildSpeechletResponseWithDirectiveNoIntent.buildSpeechletResponseWithDirectiveNoIntent());
+    } else {
+      console.log("mail  in completed");
+      console.log("  current request: "+JSON.stringify(request));
+      console.log("  returning: "+ JSON.stringify(request.intent));
+      console.log("in completed dialogState: "+ JSON.stringify(request.dialogState));
+      // Dialog is now complete and all required slots should be filled,
+      // so call your normal intent handler.
+      return request.intent;
+    }
+}
+
+
+
+
+
+//send mail intent
 function SendEmailIntent(request, session, callback){
     console.log("in mail");
     console.log("request: "+JSON.stringify(request));
     var sessionAttributes={};
-    var filledSlots = delegateSlot.delegateSlotCollection(request, sessionAttributes, callback);
+    var filledSlots = slotCollection(request, sessionAttributes, callback);
 
     //compose speechOutput that simply reads all the collected slot values
     var speechOutput = "";
@@ -93,7 +133,9 @@ function SendEmailIntent(request, session, callback){
                     done(null, accessToken);
                 }
           });
-          // send mail
+
+          //get contacts
+
           const getmyContacts = () => new Promise((rs, rj) => {
               client.api('/me/contacts').get().then((contactsResult)=>{
 
@@ -138,36 +180,38 @@ function SendEmailIntent(request, session, callback){
               })
             });
 
+            // send mail
 
-          const sendEmail = (eventContacts) => new Promise((rs, rj) => {
-            // handle contactsResult
-            count++;
-            console.log('time: ' + count);
-            var mailAddress = eventContacts[0].email;
-            console.log(mailAddress);
-            var mail = {
-                subject: subject,
-                toRecipients: [{
-                    emailAddress: {
-                        address: mailAddress
-                    }
-                }],
-                body: {
-                    content: content,
-                    contentType: "html"
-                }
-            }
+            const sendEmail = (eventContacts) => new Promise((rs, rj) => {
+              // handle contactsResult
+              count++;
+              console.log('time: ' + count);
+              var mailAddress = eventContacts[0].email;
+              console.log(mailAddress);
+              var mail = {
+                  subject: subject,
+                  toRecipients: [{
+                      emailAddress: {
+                          address: mailAddress
+                      }
+                  }],
+                  body: {
+                      content: content,
+                      contentType: "html"
+                  }
+              }
 
-            client
-            .api('/me/sendMail')
-            .post({message:mail})
-            .then((mailResult)=>{
-              console.log(JSON.stringify(mail));
-              rs(mailResult);
-            }).catch((e) => {
-              rj(e);
-            })
-          });
+              client
+              .api('/me/sendMail')
+              .post({message:mail})
+              .then((mailResult)=>{
+                console.log(JSON.stringify(mail));
+                rs(mailResult);
+              }).catch((e) => {
+                rj(e);
+              })
+            });
+
 
           getmyContacts()
             .then(sendEmail)

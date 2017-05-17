@@ -187,7 +187,7 @@ function onSessionStarted(sessionStartedRequest, session) {
 function onLaunch(request, session, callback) {
     //console.log(`onLaunch requestId=${launchRequest.requestId}, sessionId=${session.sessionId}`);
     console.log("in launchRequest");
-    console.log("  request: "+JSON.stringify(request));
+    console.log("lunch  request: "+JSON.stringify(request));
     // Dispatch to your skill's launch.
     getWelcomeResponse(callback);
 }
@@ -198,10 +198,16 @@ function onLaunch(request, session, callback) {
 function onIntent(request, session, callback) {
     //console.log(`onIntent requestId=${intentRequest.requestId}, sessionId=${session.sessionId}`);
     console.log("in onIntent");
-    console.log("  request: "+JSON.stringify(request));
+    console.log("in onIntent  request: "+JSON.stringify(request));
 
     const intent = request.intent;
     const intentName = request.intent.name;
+
+    // if(request.intent.slots.recipient.value){
+    //   console.log("recipient:" + request.intent.slots.recipient.value);
+    //   delete request.intent.slots.recipient.value;
+    //   console.log("recipient has been delete :" + request.intent.slots.recipient.value);
+    // }
 
     // Dispatch to your skill's intent handlers
     if (intentName === 'SendEmailIntent') {
@@ -280,3 +286,4 @@ exports.handler = (event, context, callback) => {
 exports.isSlotValid = isSlotValid;
 exports.delegateSlotCollection = delegateSlotCollection;
 exports.buildSpeechletResponse = buildSpeechletResponse;
+exports.buildSpeechletResponseWithDirectiveNoIntent  = buildSpeechletResponseWithDirectiveNoIntent ;
