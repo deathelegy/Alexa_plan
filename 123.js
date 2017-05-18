@@ -1,5 +1,5 @@
-var alexa = require("alexa-app");
-var app = new alexa.app("test");
+// var alexa = require("alexa-app");
+// var app = new alexa.app("test");
 
 // Microsoft Graph JavaScript SDK
 // npm install msgraph-sdk-javascript
@@ -13,10 +13,11 @@ var buildSpeechletResponseWithDirectiveNoIntent = require("./index.js");
 var count = 0;
 var eventContacts = [];
 var speechOutput = '';
-var client ;
-// compare
-function compare(recipient, lastName, contactsResult){
 
+
+const compare = (recipient, lastName, contactsResult) => new Promise((rs, rj) => {
+
+  eventContacts = [];
   var temp={};
   recipient = recipient.toLowerCase()
   var regexFirst = new RegExp( recipient, 'g' );
@@ -63,8 +64,63 @@ function compare(recipient, lastName, contactsResult){
           console.log('res address: ' + contactsResult.value[i].emailAddresses[0].address);
         }
       }
-  }
-}
+    }
+
+  });
+
+// compare
+// function compare(recipient, lastName, contactsResult){
+//   eventContacts = [];
+//   var temp={};
+//   recipient = recipient.toLowerCase()
+//   var regexFirst = new RegExp( recipient, 'g' );
+//   var regexLast = new RegExp( lastName, 'g' );
+//
+//   if(lastName){
+//     console.log('in lastName status:')
+//     for (var i=0; i<contactsResult.value.length; i++) {
+//       var str_first = contactsResult.value[i].givenName.toLowerCase();
+//       var str_last = contactsResult.value[i].surname.toLowerCase();
+//         if(str_first.match(regexFirst) && str_last.match(regexLast)){
+//           temp = {
+//               name: contactsResult.value[i].givenName,
+//               email: contactsResult.value[i].emailAddresses[0].address,
+//               last_name: contactsResult.value[i].surname
+//             };
+//           eventContacts.push(temp);
+//           console.log("compare first: " + contactsResult.value[i].givenName);
+//           console.log("compare last: " + contactsResult.value[i].surname);
+//           console.log("compare mail : " + contactsResult.value[i].emailAddresses[0].address);
+//         }else{
+//           console.log("no pair");
+//           console.log('res name: ' + contactsResult.value[i].givenName);
+//           console.log('res last name: ' + contactsResult.value[i].surname);
+//           console.log('res address: ' + contactsResult.value[i].emailAddresses[0].address);
+//         }
+//       }
+//       return eventContacts;
+//   }else{
+//     console.log('in firstName status:')
+//     for (var i=0; i<contactsResult.value.length; i++) {
+//       var str = contactsResult.value[i].givenName.toLowerCase();
+//         if(str.match(regexFirst)){
+//           temp = {
+//               name: contactsResult.value[i].givenName,
+//               email: contactsResult.value[i].emailAddresses[0].address,
+//               last_name: contactsResult.value[i].surname
+//             };
+//           eventContacts.push(temp);
+//           console.log("compare: " + contactsResult.value[i].givenName);
+//           console.log("compare mail : " + contactsResult.value[i].emailAddresses[0].address);
+//         }else{
+//           console.log("no pair");
+//           console.log('res name: ' + contactsResult.value[i].givenName);
+//           console.log('res address: ' + contactsResult.value[i].emailAddresses[0].address);
+//         }
+//       }
+//     return eventContacts;
+//   }
+// }
 
 //delegateSlot
 
@@ -93,20 +149,19 @@ function slotCollection(request, session, sessionAttributes, callback){
 
       if(tempRecipient){
         if(accessToken){
-          client = MicrosoftGraph.Client.init({
+          var client = MicrosoftGraph.Client.init({
                 authProvider: (done) => {
                     done(null, accessToken);
                 }
           });
 
           const getmyContacts = () => new Promise((rs, rj) => {
-              eventContacts =[];
-              client.api('/me/contacts').select('givenName').select('surname').select('emailAddresses').get().then((contactsResult)=>{
+              client.api('/me/contacts').get().then((contactsResult)=>{
 
                 console.log("getmyContacts: " + JSON.stringify(contactsResult));
                 // get email address
                 compare(tempRecipient, tempLastName, contactsResult);
-                rs(eventContacts);
+                rs(contactsResult);
               }).catch((e) => {
                 rj(e);
               })
@@ -114,7 +169,6 @@ function slotCollection(request, session, sessionAttributes, callback){
 
             getmyContacts().then((eventContacts) => {
               console.log("out: " + JSON.stringify(eventContacts));
-              speechOutput = '';
               if(eventContacts.length < 1){
                 speechOutput +='sorry can not find '+ tempRecipient + ' in your contacts ..please try anoter name';
 
@@ -129,18 +183,16 @@ function slotCollection(request, session, sessionAttributes, callback){
                     response.buildSpeechletResponse("mail status", speechOutput, "", false));
               }else {
                 console.log("good compare" + JSON.stringify(eventContacts));
-                // return a Dialog.Delegate directive with no updatedIntent property.
-                callback(sessionAttributes,
-                    buildSpeechletResponseWithDirectiveNoIntent.buildSpeechletResponseWithDirectiveNoIntent());
               }
+              eventContacts = '';
             }).catch((e) => {
               console.error('error happen', e);
             })
-          }
-        }
-      // // return a Dialog.Delegate directive with no updatedIntent property.
-      // callback(sessionAttributes,
-      //     buildSpeechletResponseWithDirectiveNoIntent.buildSpeechletResponseWithDirectiveNoIntent());
+      }
+    }
+      // return a Dialog.Delegate directive with no updatedIntent property.
+      callback(sessionAttributes,
+          buildSpeechletResponseWithDirectiveNoIntent.buildSpeechletResponseWithDirectiveNoIntent());
     } else {
       console.log("mail  in completed");
       console.log("  current request: "+JSON.stringify(request));
@@ -166,40 +218,14 @@ function SendEmailIntent(request, session, callback){
     var subject=request.intent.slots.mailSubject.value;
     var content=request.intent.slots.mailContent.value;
 
-    if(eventContacts.length > 0){
+    if(eventContacts.length >0){
       if(subject && content){
         console.log("subject: " + subject);
         console.log("content: " + content);
         console.log("in send mail intent: " + JSON.stringify(eventContacts));
 
-        var mailAddress = eventContacts[0].email;
-        var mail = {
-            subject: subject,
-            toRecipients: [{
-                emailAddress: {
-                    address: mailAddress
-                }
-            }],
-            body: {
-                content: content,
-                contentType: "html"
-            }
-        }
-
-        client
-        .api('/me/sendMail')
-        .post({message:mail})
-        .then((mailResult) =>{
-          console.log(JSON.stringify(mail));
-
-          speechOutput+= "send mail"  + " Recipient: " + eventContacts[0].name + " " + eventContacts[0].last_name + " subject: " + subject + " content: "+ content + '.. Is there anything else I can help you with?';
-          // do something
-          callback(sessionAttributes,
-              response.buildSpeechletResponse("mail status", speechOutput, "", false));
-
-        }).catch((err) => {
-            console.log(err);
-        })
+        callback(sessionAttributes,
+            response.buildSpeechletResponse("mail status", "good to send", "", false));
       }
     }
 
