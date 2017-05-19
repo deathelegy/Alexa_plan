@@ -186,6 +186,7 @@ function SendEmailIntent(request, session, callback){
             }
         }
 
+        //send mail
         client
         .api('/me/sendMail')
         .post({message:mail})
@@ -202,128 +203,6 @@ function SendEmailIntent(request, session, callback){
         })
       }
     }
-
-
-
-    // var recipient = request.intent.slots.mailRecipient.value;
-    //
-    // var lastName = isSlot.isSlotValid(request, "mailRecipientLastName");
-    //
-    // console.log("LastName: " + lastName);
-    //
-    // console.log('session: '+JSON.stringify(session));
-    // var accessToken = session.user.accessToken;
-    // if(subject && content && recipient){
-    //   if(accessToken){
-    //       // console.log('accessToken: ' + accessToken);
-    //       var client = MicrosoftGraph.Client.init({
-    //             authProvider: (done) => {
-    //                 done(null, accessToken);
-    //             }
-    //       });
-    //
-    //       //get contacts
-    //
-    //       const getmyContacts = () => new Promise((rs, rj) => {
-    //           client.api('/me/contacts').get().then((contactsResult)=>{
-    //
-    //             console.log(JSON.stringify(contactsResult));
-    //             // get email address
-    //
-    //             compare(recipient, lastName, contactsResult);
-    //
-    //                 if(eventContacts.length < 1){
-    //                   speechOutput +='sorry can not find '+ recipient + ' in your contacts ..please try anoter name';
-    //
-    //                   callback(sessionAttributes,
-    //                       response.buildSpeechletResponse("mail status", speechOutput, "", false));
-    //
-    //                 }else if(eventContacts.length > 1){
-    //                   speechOutput +='sorry you have '+ eventContacts.length + ' same names .. ' + recipient +' in your contacts ..please select correct one';
-    //                   for(var i = 1 ; i <= eventContacts.length ; i++){
-    //                     speechOutput +='. . contacts' + i +' . . '+ eventContacts[i-1].name +' . . ' +eventContacts[i-1].last_name;
-    //                   }
-    //
-    //                   callback(sessionAttributes,
-    //                       response.buildSpeechletResponse("mail status", speechOutput, "", false));
-    //
-    //                   // console.log("1 recipient :" + request.intent.slots.mailRecipient.value);
-    //                   // // request.intent.slots.mailRecipient.value = '';
-    //                   // // request.intent.slots.mailRecipientLastName.value = '';
-    //                   // delete request.intent.slots.mailRecipient.value;
-    //                   // delete request.intent.slots.mailRecipientLastName.value;
-    //                   // request.dialogState = 'IN_PROGRESS';
-    //                   // FilledSlots = delegateSlot.delegateSlotCollection(request, sessionAttributes, callback);
-    //                   //
-    //                   //
-    //                   // recipient  = request.intent.slots.mailRecipient.value;
-    //                   // lastName = request.intent.slots.mailRecipientLastName.value;
-    //                   // console.log("2 recipient :" + recipient);
-    //                   // console.log(" request: "+JSON.stringify(request));
-    //                 }else {
-    //                   rs(eventContacts);
-    //                 }
-    //           }).catch((e) => {
-    //             rj(e);
-    //           })
-    //         });
-    //
-
-            // send mail
-            const sendEmail = (eventContacts) => new Promise((rs, rj) => {
-              // handle contactsResult
-              count++;
-              console.log('time: ' + count);
-              var mailAddress = eventContacts[0].email;
-              console.log(mailAddress);
-              var mail = {
-                  subject: subject,
-                  toRecipients: [{
-                      emailAddress: {
-                          address: mailAddress
-                      }
-                  }],
-                  body: {
-                      content: content,
-                      contentType: "html"
-                  }
-              }
-
-              client
-              .api('/me/sendMail')
-              .post({message:mail})
-              .then((mailResult)=>{
-                console.log(JSON.stringify(mail));
-                rs(mailResult);
-              }).catch((e) => {
-                rj(e);
-              })
-            });
-    //
-    //
-    //       getmyContacts()
-    //         .then(sendEmail)
-    //         .then((mailResult)=>{
-    //
-    //           speechOutput+= "send mail"  + " Recipient: " + recipient + " subject: " + subject + " content: "+ content ;
-    //           var replyMessage = '.. Is there anything else I can help you with?'
-    //           speechOutput += replyMessage;
-    //           // do something
-    //           callback(sessionAttributes,
-    //               response.buildSpeechletResponse("mail status", speechOutput, "", false));
-    //         }).catch((e) => {
-    //           console.error('error happen', e);
-    //         })
-    //
-    //   }else{
-    //       console.log('no token');
-    //   }
-    // }else{
-    //   console.log("no subject, no content");
-    // }
-    //say the results
-    // callback(sessionAttributes,
-    //     buildSpeechletResponse("mail status", speechOutput, "", true));
 }
 
 exports.SendEmailIntent = SendEmailIntent;
